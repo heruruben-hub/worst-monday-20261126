@@ -73,11 +73,14 @@ def _validate(text: str) -> None:
     )
 
 
-def main() -> None:
-    # Gate checks, mirroring the sealed scorer.
-    _validate(ENTRY)
+def _write_and_verify(text: str) -> None:
+    """Write text to the output path, then read it back and re-gate it.
 
-    encoded = ENTRY.encode("utf-8")
+    Splitting the write from main() keeps the entry point to one job —
+    validate, write, verify — and makes the round-trip check reusable
+    if the program ever writes a second artifact.
+    """
+    encoded = text.encode("utf-8")
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "wb") as f:
         f.write(encoded)
@@ -85,13 +88,20 @@ def main() -> None:
     # Round-trip verification: read it back and confirm the gate again.
     with open(OUTPUT_PATH, "rb") as f:
         raw = f.read()
-    text = raw.decode("utf-8")
-    assert text == ENTRY, f"round-trip mismatch: {text!r} != {ENTRY!r}"
-    _validate(text)
+    decoded = raw.decode("utf-8")
+    assert decoded == text, f"round-trip mismatch: {decoded!r} != {text!r}"
+    _validate(decoded)
 
     print(
-        f"Wrote {len(text)} characters ({len(encoded)} bytes) to {OUTPUT_PATH}"
+        f"Wrote {len(decoded)} characters ({len(encoded)} bytes) to "
+        f"{OUTPUT_PATH}"
     )
+
+
+def main() -> None:
+    # Gate checks, mirroring the sealed scorer.
+    _validate(ENTRY)
+    _write_and_verify(ENTRY)
 
 
 if __name__ == "__main__":
